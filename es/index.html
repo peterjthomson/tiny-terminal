@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mini Terminal 🖥️</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #2d2d2d;
+    --surface: #3a3a3a;
+    --text: #e8e8e8;
+    --border: #4a4a4a;
+    --prompt: #8edf8e;
+    --red: #ff9a9a;
+    --orange: #ffbe8a;
+    --yellow: #fff1a0;
+    --green: #a8f0a8;
+    --blue: #a0d4ff;
+    --purple: #d4a8ff;
+    --pink: #ffb3d9;
+    --teal: #8aeaea;
+    --overlay: #999;
+  }
+
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: #f5f5f5;
+      --surface: #e8e8e8;
+      --text: #333;
+      --border: #ccc;
+      --prompt: #4caf50;
+      --red: #ef5350;
+      --orange: #ff9800;
+      --yellow: #d4a017;
+      --green: #4caf50;
+      --blue: #42a5f5;
+      --purple: #ab47bc;
+      --pink: #ec407a;
+      --teal: #26a69a;
+      --overlay: #888;
+    }
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .titlebar {
+    background: var(--surface);
+    padding: 8px 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .titlebar .dots { display: flex; gap: 6px; }
+  .titlebar .dot { width: 12px; height: 12px; border-radius: 50%; }
+  .dot.red { background: var(--red); }
+  .dot.yellow { background: var(--yellow); }
+  .dot.green { background: var(--green); }
+  .titlebar .title { flex: 1; text-align: center; font-size: 13px; color: var(--overlay); }
+
+  .terminal {
+    flex: 1;
+    padding: 16px 16px 16px 20px;
+    overflow-y: auto;
+    font-size: 16px;
+    line-height: 1.6;
+  }
+
+  .terminal::-webkit-scrollbar { width: 8px; }
+  .terminal::-webkit-scrollbar-track { background: var(--bg); }
+  .terminal::-webkit-scrollbar-thumb { background: var(--surface); border-radius: 4px; }
+
+  .line { margin-bottom: 2px; white-space: pre-wrap; word-wrap: break-word; }
+  .line .prompt { color: var(--prompt); font-weight: bold; }
+  .line .cmd { color: var(--text); }
+
+  .output { color: var(--text); margin-bottom: 4px; white-space: pre-wrap; }
+  .output.art { color: var(--yellow); }
+  .output.info { color: var(--blue); }
+  .output.success { color: var(--green); }
+  .output.magic { color: var(--purple); }
+  .output.error { color: var(--red); }
+  .output.peach { color: var(--orange); }
+  .output.teal { color: var(--teal); }
+  .output.pink { color: var(--pink); }
+
+  .input-line { display: flex; align-items: flex-start; clear: both; }
+  .input-line .prompt { color: var(--prompt); font-weight: bold; }
+
+  #input {
+    background: none;
+    border: none;
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 16px;
+    outline: none;
+    flex: 1;
+    caret-color: var(--prompt);
+  }
+
+  .emoji-big { font-size: 32px; line-height: 1.4; }
+  .emoji-flood { font-size: 24px; line-height: 1.3; word-break: break-all; }
+
+  .celebration { }
+
+  .rainbow {
+    background: linear-gradient(90deg, var(--red), var(--orange), var(--yellow), var(--green), var(--blue), var(--purple));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    font-weight: bold;
+  }
+
+  .giant { font-size: 28px; font-weight: bold; }
+  .counter { font-size: 48px; font-weight: bold; color: var(--yellow); }
+  .creature-art { color: var(--purple); font-size: 14px; line-height: 1.2; }
+
+  .challenge-box {
+    border: 2px solid var(--purple);
+    border-radius: 8px;
+    padding: 8px 12px;
+    margin: 4px 0 8px;
+    display: inline-block;
+  }
+</style>
+</head>
+<body>
+
+<div class="titlebar">
+  <div class="dots">
+    <div class="dot red"></div>
+    <div class="dot yellow"></div>
+    <div class="dot green"></div>
+  </div>
+  <div class="title">mini terminal</div>
+</div>
+
+<div class="terminal" id="terminal">
+</div>
+
+<script>
+(function() {
+  const t = document.getElementById('terminal');
+  const animalKeys = Object.keys(window._animals || {});
+  // Will be populated after animals object is defined
+  window._showWelcome = function() {
+    const emoji = ['🚀','🦕','🐱','🔥','⭐','🌈','💎','🎸','🦞','🐙','🎪','🌸','🍕','🎯','🐋','🦋','🌊','🎵','🍭','🐲','👾','🪐','🦈','🌻','🎨','🐸','🏀','🦄','🎃','🐧'];
+    let row = '';
+    for (let i = 0; i < 8; i++) row += emoji[Math.floor(Math.random() * emoji.length)];
+    const hello = `<pre style="color:var(--green);font-size:13px;line-height:1.1"> _          _ _       _ \n| |__   ___| | | ___ | |\n| '_ \\ / _ \\ | |/ _ \\| |\n| | | |  __/ | | (_) |_|\n|_| |_|\\___|_|_|\\___/(_)</pre>`;
+    t.innerHTML = hello + `<div class="output emoji-big celebration">${row}</div><div class="output" style="margin-bottom:8px"></div>`;
+  };
+})();
+</script>
+
+<!-- input is injected inside terminal by script -->
+
+<script>
+const terminal = document.getElementById('terminal');
+
+let gibberishCount = 0;
+let pendingChallenge = null;
+
+const allEmoji = ['🚀','🦕','🐱','🔥','⭐','🌈','💎','🎸','🦞','🐙','🎪','🌸','🍕','🎯','🐋','🦋','🌊','🎵','🍭','🐲','👾','🪐','🦈','🌻','🎨','🐸','🏀','🧲','🦄','🎃','🐧','🎺','🌮','🦊','🔮','🎠','🐢','⚡','🍩','🎈'];
+
+const animals = {
+  'gato':       { emoji: '🐱', art: '  /\\_/\\\n ( o.o )\n  > ^ <', sound: 'Miauuu!' },
+  'perro':       { emoji: '🐶', art: '  / \\__\n (    @\\___\n  /         O\n /   (_____/\n/_____/', sound: 'Guau guau!' },
+  'pez':      { emoji: '🐟', art: '  ><(((°>', sound: 'Blub blub!' },
+  'pájaro':      { emoji: '🐦', art: '   ,_,\n  (O,O)\n  /)  )\n --"-"--', sound: ' ' },
+  'víbora':     { emoji: '🐍', art: '  ~~~~~sssss\n /     \\\n|  o  o |\n \\  ~  /', sound: 'Hissssss!' },
+  'rana':      { emoji: '🐸', art: '  @..@\n (----)\n( >__< )', sound: 'Ribbit!' },
+  'sapo':      { emoji: '🐸', art: '  @..@\n (----)\n( >__< )', sound: 'Ribbit!' },
+  'vaca':       { emoji: '🐄', art: '  (___)\n  (o o)\n /  |  \\', sound: 'Muuuu!' },
+  'cerdo':       { emoji: '🐷', art: '  ^  ^\n (o  o)\n  (oo)', sound: 'Oink oink!' },
+  'chancho':       { emoji: '🐷', art: '  ^  ^\n (o  o)\n  (oo)', sound: 'Oink oink!' },
+  'pato':      { emoji: '🦆', art: '    _\n  <(o )___\n   ( ._> /\n    `---\'', sound: 'Cuac Cuac!' },
+  'tiburón':     { emoji: '🦈', art: '     |\\\n     |  \\\n     |   \\______\n ~~~~|          |~~~~\n     |   /------\n     |  /', sound: ' ' },
+  'dinosaurio':  { emoji: '🦕', art: '            __\n           / _)\n    _.----._/ /\n   /         /\n _/ (  | (  |\n/__.-\'|_|--|_|', sound: 'ROARRR!' },
+  'cangrejo':   { emoji: '🦞', art: ' \\/\\_/\\_/\\/\n  \\_   _/\n  (|o o|)\n   |   |\n  /|   |\\', sound: 'Clic clic!' },
+  'elefante':  { emoji: '🐘', art: '    ___\n   /   \\\n  | o o |\n   \\   /----,\n    | |      \\', sound: ' ' },
+  'mono':    { emoji: '🐵', art: '  .-"-.  \n /  o o \\\n|   <   |\n \\  ~  /', sound: 'Uh uh ah ah!' },
+  'oso':      { emoji: '🐻', art: ' ʕ •ᴥ• ʔ', sound: 'Grrr!' },
+  'conejo':    { emoji: '🐰', art: ' (\\_/)\n ( •.•)\n />🥕', sound: '' },
+  'búho':       { emoji: '🦉', art: '  ,_,\n (O,O)\n(  V  )\n  ^ ^', sound: 'Hoo hoo!' },
+  'tortuga':    { emoji: '🐢', art: '    _____\n  .\'     `.\n /  o   o  \\\n|     <     |\n \\  \\___/  /\n  `._____,\'', sound: '' },
+  'pinguino':   { emoji: '🐧', art: '   (o)\n  /| |\\\n _| | |_', sound: '' },
+  'leon':      { emoji: '🦁', art: '  /----- \\\n /  o   o  \\\n|    <>    |\n \\  ____  /\n  \\ \\  / /', sound: 'ROARRR!' },
+  'lobo':      { emoji: '🐺', art: '', sound: '' },
+  'loro':      { emoji: '🦜', art: ' ', sound: 'Dame la papa!' },
+};
+
+const vehicles = {
+  'avión':       { emoji: '✈️', art: '         __|__\n  --o--o--(_)--o--o--', sound: '' },
+  'camión':       { emoji: '🚛', art: '    ___________\n   |  _  _  _  |___\n   |  ¡CAMIÓN!   |   |\n   |___________|___|\n    (O)         (O)', sound: 'BROOM BROOM!' },
+  'excavadora':   { emoji: '🏗️', art: '     ___\n    /   \\-----.\n   |  O  |     \\\n    \\___/  _   |\n   [XXXXX]|_|_/', sound: 'DIG DIG DIG!' },
+  'cohete':      { emoji: '🚀', art: '      /\\\n     /  \\\n    | 🚀 |\n    |    |\n   /|    |\\\n   🔥🔥🔥', sound: '3... 2... 1... ¡DESPEGUE!' },
+  'tren':       { emoji: '🚂', art: '   __    __    __\n  |==|  |==|  |==|\n __|  |__|  |__|  |__\n|   CHOO CHOO!      |\n|___________________|\n  (O)    (O)    (O)', sound: 'CHUU CHUU!' },
+  'helicóptero':  { emoji: '🚁', art: '   ---+---\n      |\n   .--\'--.\n  / o   o \\\n  \\_______/', sound: '' },
+  'bulldozer':   { emoji: '🚜', art: '  _________\n |  PUSH!  |____\n |_________|    |\n   (O)     (O)', sound: 'Biip Biip Biip!' },
+  'grúa':       { emoji: '🏗️', art: '   |\n   |______\n   |      \\---[HOOK]\n   | CRANE|\n   |______|', sound: '' },
+  'barco':        { emoji: '⛵', art: '      |\n     /|\\\n    / | \\\n ~~~~~~~~~~~', sound: 'Splashhh!' },
+  'auto':         { emoji: '🚗', art: '    ______\n   /|_||_\\`.__\n  (   _    _ _\\\n  =`-(_)--(_)-\'', sound: 'Pi pi pi!' },
+  'colectivo':         { emoji: '🚌', art: '  ______________\n |  BUS!  [] [] |\n |_____________|\n   (O)      (O)', sound: '¡Vamos de viaje!' },
+  'bus':         { emoji: '🚌', art: '  ______________\n |  BUS!  [] [] |\n |_____________|\n   (O)      (O)', sound: '¡Vamos de viaje!' },
+  'omnibus':         { emoji: '🚌', art: '  ______________\n |  BUS!  [] [] |\n |_____________|\n   (O)      (O)', sound: '¡Vamos de viaje!' },
+  'autobus':         { emoji: '🚌', art: '  ______________\n |  BUS!  [] [] |\n |_____________|\n   (O)      (O)', sound: '¡Vamos de viaje!' },
+};
+
+const colors = {
+  'rojo':    { emoji: '🔴', things: '🍎 🚒 🌹 ❤️ 🍓' },
+  'azul':   { emoji: '🔵', things: '🌊 🦋 🫐 💎 🐳' },
+  'verde':  { emoji: '🟢', things: '🌿 🐸 🥒 🌲 🐢' },
+  'amarillo': { emoji: '🟡', things: '⭐ 🌻 🍋 🐤 ☀️' },
+  'naranja': { emoji: '🟠', things: '🍊 🥕 🦊 🎃 🏀' },
+  'violeta': { emoji: '🟣', things: '🍇 🦄 🔮 👾 🌸' },
+  'rosa':   { emoji: '💗', things: '🌸 🦩 🍧 💝 🎀' },
+  'negro':  { emoji: '⚫', things: '🐈‍⬛ 🕷️ 🌑 🎱 🦇' },
+  'blanco':  { emoji: '⚪', things: '☁️ ⛄ 🕊️ 🥚 🦢' },
+  'marrón':  { emoji: '🟤', things: '🐻 🍫 🌰 🐿️ 🏈' },
+};
+
+const letterAnimals = {
+  'a':'🐝','b':'🐳','c':'🐌','d':'🐬','e':'🐘','f':'🦩','g':'😺','h':'🦛',
+  'i':'🦎','j':'🦒','k':'🐨','l':'🦁','m':'🐵','n':'🦦','o':'🧸','p':'🐧',
+  'q':'🧀','r':'🐭','s':'🐍','t':'🐢','u':'🦄','v':'🐮','w':'🛜','x':'✖️',
+  'y':'🐊','z':'🦊',
+};
+
+const numberComparisons = {
+  20: "¡Esa es la cantidad de dedos que tenés! 🖐️🦶",
+  50: "¡La mitad de 100! 🪙",
+  100: "¡La cantidad de pies que hay en 10 personas! 🦶×10",
+  365: "¡La cantidad de días que tiene un año! 📅",
+  999: "¡Casi mil! 😱",
+};
+
+const challenges = [
+  { prompt: '🐱', answer: 'gato', hint: '¿qué animal es?' },
+  { prompt: '🐶', answer: 'perro', hint: '¿qué animal es?' },
+  { prompt: '🐸', answer: ['rana','sapo'], hint: '¿qué animal es?' },
+  { prompt: '🐍', answer: 'víbora', hint: '¿qué animal es?' },
+  { prompt: '🦞', answer: 'cangrejo', hint: '¿qué animal es?' },
+  { prompt: '🚀', answer: 'cohete', hint: '¿qué es esto?' },
+  { prompt: '✈️', answer: 'avión', hint: '¿qué es esto??' },
+  { prompt: '🚛', answer: 'camión', hint: '¿qué es esto?' },
+  { prompt: '🔴', answer: 'rojo', hint: '¿qué color es?' },
+  { prompt: '🔵', answer: 'azul', hint: '¿qué color es?' },
+  { prompt: '🟢', answer: 'verde', hint: '¿qué color es?' },
+  { prompt: '🟡', answer: 'amarillo', hint: '¿qué color es?' },
+  { prompt: '⚫', answer: 'negro', hint: '¿qué color es?' },
+  { prompt: '🟤', answer: 'marrón', hint: '¿qué color es?' },
+  { prompt: '🐟🐟🐟', answer: '3', hint: '¿cuántos peces hay?' },
+  { prompt: '⭐⭐⭐⭐⭐', answer: '5', hint: '¿cuántas estrellas hay?' },
+  { prompt: '🍎🍎', answer: '2', hint: '¿cuántas manzanas hay?' },
+];
+
+function makeCreature(letters) {
+  const chars = letters.slice(0, 12).split('');
+  const eyes = ['o','O','@','*','•','°'];
+  const e1 = eyes[Math.floor(Math.random() * eyes.length)];
+  const e2 = eyes[Math.floor(Math.random() * eyes.length)];
+  const bodyChars = chars.slice(0, 6).join('');
+  const legChars = chars.slice(6, 10).join('') || 'vvvv';
+  const creatures = [
+    `  (${e1} ${e2})\n / ${bodyChars} \\\n  ${legChars}`,
+    `   ${e1}___${e2}\n  /${bodyChars}\\\n  ~${legChars}~`,
+    ` \\(${e1}.${e2})/\n  |${bodyChars}|\n  /${legChars}\\`,
+    `  {${e1} ${e2}}\n <|${bodyChars}|>\n  ^${legChars}^`,
+  ];
+  return creatures[Math.floor(Math.random() * creatures.length)];
+}
+
+function randomEmoji(n) {
+  let r = '';
+  for (let i = 0; i < n; i++) r += allEmoji[Math.floor(Math.random() * allEmoji.length)];
+  return r;
+}
+
+function addLine(prompt, cmd) {
+  const div = document.createElement('div');
+  div.className = 'line';
+  div.innerHTML = `<span class="prompt">${prompt}</span><span class="cmd">${cmd}</span>`;
+  terminal.appendChild(div);
+}
+
+function addOutput(text, cls = '') {
+  const div = document.createElement('div');
+  div.className = `output ${cls}`;
+  div.innerHTML = text;
+  terminal.appendChild(div);
+  return div;
+}
+
+function scrollToBottom() { terminal.scrollTop = terminal.scrollHeight; }
+
+function showChallenge() {
+  const c = challenges[Math.floor(Math.random() * challenges.length)];
+  pendingChallenge = c;
+  addOutput(`<div class="challenge-box"><span class="emoji-big">${c.prompt}</span><br><span style="color:var(--purple)">${c.hint}</span></div>`, 'celebration');
+  scrollToBottom();
+}
+
+async function countUpAnimation(target) {
+  const div = document.createElement('div');
+  div.className = 'counter';
+  terminal.appendChild(div);
+  const steps = 30;
+  const increment = Math.ceil(target / steps);
+  let current = 0;
+  for (let i = 0; i < steps; i++) {
+    current = Math.min(current + increment, target);
+    div.textContent = current.toLocaleString();
+    scrollToBottom();
+    await new Promise(r => setTimeout(r, 60));
+  }
+  div.textContent = target.toLocaleString() + ' !';
+  addOutput(randomEmoji(15), 'emoji-flood celebration');
+  scrollToBottom();
+}
+
+function isKnownWord(lower) {
+  return animals[lower] || vehicles[lower] || colors[lower] ||
+    ['ayuda','broma','bromas','chistes','bailar','fiesta','magia','abracadabra','alakazam','shazam','presto','mago','spell',
+     'arcoiris','robot','beep','luna','sol','estrella','estrellas','borrar','cls','hola',
+     'animales','colores','vehículos','autos','camiones','letras','números'].includes(lower);
+}
+
+function isGibberish(text) {
+  if (text.length < 3) return false;
+  const lower = text.toLowerCase();
+  if (isKnownWord(lower)) return false;
+  if (/^\d+$/.test(text)) return false;
+  if (lower.length === 1) return false;
+  if (!/\s/.test(text) && text.length > 4) return true;
+  return text.length > 6;
+}
+
+const gibberishResponses = [
+  (text) => ({ text: randomEmoji(12 + Math.floor(Math.random() * 8)), cls: 'emoji-flood celebration' }),
+  (text) => ({ text: `<pre class="creature-art">${makeCreature(text)}</pre>¡tus letras hicieron una criatura!`, cls: 'magic celebration' }),
+  (text) => {
+    const n = text.length;
+    const emoji = allEmoji[Math.floor(Math.random() * allEmoji.length)];
+    return { text: `${n} letters! ${emoji.repeat(Math.min(n, 20))}`, cls: 'teal celebration' };
+  },
+  (text) => ({ text: `<span class="rainbow giant">${text.toUpperCase()}</span>`, cls: 'celebration' }),
+  (text) => {
+    const e = allEmoji[Math.floor(Math.random() * allEmoji.length)];
+    return { text: `<span class="emoji-big">${e} ${e} ${e} ${e} ${e}</span>`, cls: 'celebration' };
+  },
+  (text) => {
+    const reversed = text.split('').reverse().join('');
+    return { text: `🪞 al revés: <span class="rainbow">${reversed}</span>`, cls: 'magic celebration' };
+  },
+  (text) => {
+    const exploded = text.split('').map(c => c + allEmoji[Math.floor(Math.random() * allEmoji.length)]).join('');
+    return { text: `💥 ${exploded}`, cls: 'celebration' };
+  },
+  (text) => {
+    const vertical = text.split('').join('\n');
+    return { text: `<pre>${vertical}</pre>`, cls: 'magic celebration' };
+  },
+  (text) => ({ text: `🤖 la computadora intentó decir "${text}" pero se confundió! 🤯💫`, cls: 'peach celebration' }),
+  (text) => {
+    const code = text.split('').map(c => String.fromCharCode(c.charCodeAt(0) + 1)).join('');
+    return { text: `🔐 código secreto: <span class="rainbow">${code}</span>`, cls: 'magic celebration' };
+  },
+  (text) => {
+    const facts = [
+      '🦕 Los dinosaurios vivieron por 165 millones de años!',
+      '🐙 Los pulpos tienen TRES corazones!',
+      '🍯 La miel nunca se pone en mal estado!',
+      '🌙 La luna se está alejando lentamente de la Tierra!',
+      '🐘 Los elefantes no pueden saltar!',
+      '🦈 Los tiburones son más viejos que los árboles!',
+      '🐝 Una abeja visita 50-100 flores en un viaje!',
+    ];
+    return { text: facts[Math.floor(Math.random() * facts.length)], cls: 'info celebration' };
+  },
+  (text) => {
+    const sounds = ['BOING!','SPLAT!','WHOOOMP!','KABOOM!','ZING!','BLOOP!','WHAM!','SWOOSH!'];
+    const s = sounds[Math.floor(Math.random() * sounds.length)];
+    return { text: `<span class="giant">${s}</span> 💥🔊`, cls: 'peach celebration' };
+  },
+];
+
+async function handleCommand(raw) {
+  const text = raw.trim();
+  const lower = text.toLowerCase();
+  addLine('escribe aquí&gt;&nbsp;', text);
+
+  if (!text) { addOutput('escribe algo! 🎯', 'info'); scrollToBottom(); return; }
+
+  if (pendingChallenge) {
+    const c = pendingChallenge;
+    const answers = Array.isArray(c.answer) ? c.answer : [c.answer];
+    if (answers.includes(lower)) {
+      pendingChallenge = null;
+      gibberishCount = 0;
+      addOutput(`<span class="rainbow giant">¡SI! ✨🎉✨</span>`, 'celebration');
+      scrollToBottom();
+    } else {
+      pendingChallenge = null;
+    }
+  }
+
+  // Single letter
+  if (lower.length === 1 && /[a-z]/.test(lower)) {
+    gibberishCount = 0;
+    const upper = lower.toUpperCase();
+    const animal = letterAnimals[lower] || '✨';
+    addOutput(`<span class="rainbow giant">${upper}</span>  <span class="emoji-big">${animal}</span>`, 'celebration');
+    scrollToBottom(); return;
+  }
+
+  // Numbers
+  if (/^\d+$/.test(text)) {
+    gibberishCount = 0;
+    const n = parseInt(text);
+    if (n >= 1000) {
+      addOutput(`contando hasta ${n.toLocaleString()}...`, 'magic');
+      await countUpAnimation(n);
+      scrollToBottom(); return;
+    }
+    if (n <= 10) {
+      const emoji = allEmoji[Math.floor(Math.random() * allEmoji.length)];
+      addOutput(`${emoji.repeat(n)}`, 'celebration');
+    } else if (n <= 100) {
+      const comp = numberComparisons[n];
+      const emoji = allEmoji[Math.floor(Math.random() * allEmoji.length)];
+      if (n <= 30) addOutput(`${emoji.repeat(n)}`, 'emoji-flood celebration');
+      else addOutput(`${n}! ${emoji.repeat(15)}`, 'celebration');
+      if (comp) addOutput(comp, 'info');
+    } else {
+      const emoji = allEmoji[Math.floor(Math.random() * allEmoji.length)];
+      addOutput(`<span class="giant">${n}</span> ${emoji.repeat(10)}`, 'magic celebration');
+      const comp = numberComparisons[n];
+      if (comp) addOutput(comp, 'info');
+    }
+    scrollToBottom(); return;
+  }
+
+  if (animals[lower]) {
+    gibberishCount = 0;
+    const a = animals[lower];
+    addOutput(`<span class="emoji-big">${a.emoji}${a.emoji}${a.emoji}</span>`, 'celebration');
+    addOutput(`<pre>${a.art}</pre>`, 'art');
+    addOutput(a.sound, 'success');
+    scrollToBottom(); return;
+  }
+
+  if (vehicles[lower]) {
+    gibberishCount = 0;
+    const v = vehicles[lower];
+    addOutput(`<span class="emoji-big">${v.emoji}${v.emoji}${v.emoji}</span>`, 'celebration');
+    addOutput(`<pre>${v.art}</pre>`, 'art');
+    addOutput(v.sound, 'success');
+    scrollToBottom(); return;
+  }
+
+  if (colors[lower]) {
+    gibberishCount = 0;
+    const c = colors[lower];
+    addOutput(`<span class="emoji-big">${c.things}</span>`, 'celebration');
+    scrollToBottom(); return;
+  }
+
+  if (['hola'].includes(lower)) { gibberishCount = 0; addOutput('👋 ¡hola! 🖥️✨', 'success celebration'); scrollToBottom(); return; }
+
+  if (lower === 'ayuda') {
+    gibberishCount = 0;
+    addOutput('🐾 animales: gato, perro, tiburón, dinosaurio...', 'teal');
+    addOutput('🚗 vehículos: avión, camión, cohete...', 'peach');
+    addOutput('🎨 colores: rojo, azul, verde...', 'pink');
+    addOutput('🔤 letras: a, b, c...', 'success');
+    addOutput('🔢 números: 1, 2, 1000...', 'magic');
+    scrollToBottom(); return;
+  }
+
+  if (['broma','chiste','divertido'].includes(lower)) {
+    gibberishCount = 0;
+    const jokes = [
+      '🤣 ¿Por qué estornudó la computadora?\n¡Porque tenía un virus!',
+      '🤣 ¿Qué hace un perro con un taladro?\nTa-ladrando! 🐶',
+      '🤣 ¿Cuál es el animal que es dos veces animal?\nEl gato, porque es gato y araña! 😹🕷️',
+      '🤣 ¿Cuál es el baile favorito del tomate?\n¡La salsa! 🍅',
+      '🤣 ¿Qué le dice un pez a otro?\n¡Nada! 🐟🐟',
+      '🤣 ¿Cómo se dice pañuelo en japonés?\n¡Sakamoko! 😪',
+	  '🤣 ¿Por qué la escoba es feliz todos los días?\n¡Porque siempre ba-rriendo! 🧹🧹',
+	  '🤣 ¿Qué le dice una iguana a su hermana gemela?\n¡Somos iguanitas! 🦎',
+    ];
+    addOutput(jokes[Math.floor(Math.random() * jokes.length)].replace('\n','<br>'), 'peach celebration');
+    scrollToBottom(); return;
+  }
+
+  if (['magia','abracadabra','alakazam','shazam','presto','mago'].includes(lower)) {
+    gibberishCount = 0; addOutput('✨🔮💫⭐🌟✨🔮💫⭐🌟✨', 'magic celebration'); scrollToBottom(); return;
+  }
+
+  if (lower === 'bailar' || lower === 'party') { gibberishCount = 0; addOutput('🕺💃🪩🎵🎶🕺💃🪩🎵🎶', 'magic celebration'); scrollToBottom(); return; }
+  if (lower === 'arcoiris') { gibberishCount = 0; addOutput('<span class="rainbow giant">¡ARCOIRIS!</span>', 'celebration'); addOutput('🔴🟠🟡🟢🔵🟣', 'celebration'); scrollToBottom(); return; }
+  if (lower === 'robot' || lower === 'beep') { gibberishCount = 0; addOutput('🤖 BIIP BUUP!', 'teal celebration'); addOutput('<pre>  [o_o]\n  /| |\\\n   | |\n  _|_|_</pre>', 'art'); scrollToBottom(); return; }
+  if (lower === 'luna') { gibberishCount = 0; addOutput('<span class="emoji-big">🌙🌜🌛🌝</span>', 'celebration'); scrollToBottom(); return; }
+  if (lower === 'sol') { gibberishCount = 0; addOutput('<span class="emoji-big">☀️🌞☀️🌞</span>', 'celebration'); scrollToBottom(); return; }
+  if (lower === 'estrella' || lower === 'stars') { gibberishCount = 0; addOutput('<span class="emoji-big">⭐🌟✨💫⭐🌟✨</span>', 'celebration'); scrollToBottom(); return; }
+
+  if (lower === 'animales') { gibberishCount = 0; addOutput(Object.keys(animals).map(a => `${animals[a].emoji} ${a}`).join('  '), 'teal'); scrollToBottom(); return; }
+  if (['vehículos','autos','camiones'].includes(lower)) { gibberishCount = 0; addOutput(Object.keys(vehicles).map(v => `${vehicles[v].emoji} ${v}`).join('  '), 'peach'); scrollToBottom(); return; }
+  if (['colores'].includes(lower)) { gibberishCount = 0; addOutput(Object.keys(colors).map(c => `${colors[c].emoji} ${c}`).join('  '), 'pink'); scrollToBottom(); return; }
+  if (lower === 'letras') { gibberishCount = 0; addOutput('<span class="rainbow giant">A B C D E F G H I J K L M N O P Q R S T U V W X Y Z</span>', 'celebration'); scrollToBottom(); return; }
+  if (lower === 'números') { gibberishCount = 0; addOutput('0️⃣1️⃣2️⃣3️⃣4️⃣5️⃣6️⃣7️⃣8️⃣9️⃣🔟', 'celebration'); scrollToBottom(); return; }
+  if (lower === 'borrar' || lower === 'cls') { terminal.innerHTML = ''; addOutput('✨', 'success'); scrollToBottom(); return; }
+
+  if (lower.startsWith('i am ') || lower.startsWith('my name is ')) {
+    gibberishCount = 0;
+    const name = lower.replace(/^(i am |my name is )/, '').trim();
+    addOutput(`<span class="rainbow giant">HI ${name.toUpperCase()}!</span> ✨`, 'celebration');
+    scrollToBottom(); return;
+  }
+
+  if (isGibberish(text)) {
+    gibberishCount++;
+    const resp = gibberishResponses[Math.floor(Math.random() * gibberishResponses.length)](text);
+    addOutput(resp.text, resp.cls);
+    if (gibberishCount >= 3 + Math.floor(Math.random() * 2)) {
+      gibberishCount = 0;
+      showChallenge();
+    }
+    scrollToBottom(); return;
+  }
+
+  const emoji = allEmoji[Math.floor(Math.random() * allEmoji.length)];
+  addOutput(`${emoji} ${text}! ${emoji}`, 'teal celebration');
+  scrollToBottom();
+}
+
+// Show welcome first
+window._showWelcome();
+
+// Create input line inside terminal (after welcome so innerHTML doesn't destroy it)
+const inputLine = document.createElement('div');
+inputLine.className = 'input-line';
+inputLine.innerHTML = '<span class="prompt">escribe aquí&gt;&nbsp;</span>';
+const inputEl = document.createElement('textarea');
+inputEl.id = 'input';
+inputEl.autocomplete = 'off';
+inputEl.autocapitalize = 'off';
+inputEl.spellcheck = false;
+inputEl.rows = 1;
+inputEl.style.cssText = 'background:none;border:none;color:var(--text);font-family:"JetBrains Mono",monospace;font-size:16px;outline:none;flex:1;caret-color:var(--prompt);resize:none;overflow:hidden;line-height:1.6;padding:0;margin:0;';
+inputLine.appendChild(inputEl);
+terminal.appendChild(inputLine);
+
+function autoGrow() {
+  inputEl.style.height = 'auto';
+  inputEl.style.height = inputEl.scrollHeight + 'px';
+}
+inputEl.addEventListener('input', autoGrow);
+
+inputEl.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleCommand(inputEl.value); inputEl.value = ''; autoGrow(); }
+});
+document.addEventListener('click', () => inputEl.focus());
+inputEl.focus();
+
+// Override scrollToBottom to keep input line at the end of content
+scrollToBottom = function() {
+  terminal.appendChild(inputLine);
+  terminal.scrollTop = terminal.scrollHeight;
+  inputEl.focus();
+};
+</script>
+</body>
+</html>
