@@ -287,6 +287,127 @@ const challenges = [
   { prompt: '🍎🍎', answer: '2', hint: 'how many apples?' },
 ];
 
+// Teddy Bear game (kid-friendly hangman)
+let teddyGame = null;
+
+const teddyStages = [
+  // 0 wrong — nothing
+  '',
+  // 1 — head
+  '   ___\n  (   )\n   ---',
+  // 2 — body
+  '   ___\n  (   )\n   ---\n   | |\n   |_|',
+  // 3 — left arm
+  '   ___\n  (   )\n   ---\n  /| |\n   |_|',
+  // 4 — right arm
+  '   ___\n  (   )\n   ---\n  /| |\\\n   |_|',
+  // 5 — left leg
+  '   ___\n  (   )\n   ---\n  /| |\\\n   |_|\n  /',
+  // 6 — right leg
+  '   ___\n  (   )\n   ---\n  /| |\\\n   |_|\n  / \\',
+  // 7 — ears + face — complete!
+  ' o ___ o\n  (o.o)\n   ---\n  /| |\\\n   |_|\n  / \\',
+];
+
+const teddyMaxWrong = teddyStages.length - 1;
+
+const teddyWordPool = [
+  ...Object.keys(animals),
+  ...Object.keys(vehicles).filter(v => v !== 'plane'),
+  ...Object.keys(colors),
+];
+
+function teddyCategory(word) {
+  if (animals[word]) return { label: 'an animal', emoji: animals[word].emoji };
+  if (vehicles[word]) return { label: 'a vehicle', emoji: vehicles[word].emoji };
+  if (colors[word]) return { label: 'a color', emoji: colors[word].emoji };
+  return { label: 'a word', emoji: '✨' };
+}
+
+function startTeddyBear() {
+  const word = teddyWordPool[Math.floor(Math.random() * teddyWordPool.length)];
+  teddyGame = { word, guessed: new Set(), wrong: 0 };
+  const cat = teddyCategory(word);
+  addOutput('<span class="rainbow giant">TEDDY BEAR!</span> 🧸', 'celebration');
+  addOutput(`guess one letter at a time — don't let the teddy bear appear!`, 'info');
+  addOutput(`hint: it's ${cat.label} with ${word.length} letters! ${cat.emoji}`, 'magic');
+  addOutput('type <span style="color:var(--purple)">quit</span> to exit', 'info');
+  renderTeddyState();
+}
+
+function teddyWordDisplay() {
+  return teddyGame.word.split('').map(ch =>
+    teddyGame.guessed.has(ch) ? ch.toUpperCase() : '_'
+  ).join(' ');
+}
+
+function renderTeddyState() {
+  const stage = teddyStages[Math.min(teddyGame.wrong, teddyMaxWrong)];
+  if (stage) {
+    addOutput(`<pre class="creature-art">${stage}</pre>`, '');
+  }
+  addOutput(`<span class="giant">${teddyWordDisplay()}</span>`, 'magic');
+  const wrongLetters = [...teddyGame.guessed].filter(ch => !teddyGame.word.includes(ch));
+  if (wrongLetters.length > 0) {
+    addOutput(`wrong: ${wrongLetters.join(' ')}`, 'error');
+  }
+  addOutput(`${teddyMaxWrong - teddyGame.wrong} guesses left`, 'info');
+  scrollToBottom();
+}
+
+function handleTeddyGuess(letter) {
+  if (teddyGame.guessed.has(letter)) {
+    addOutput(`you already guessed "${letter}"!`, 'peach');
+    renderTeddyState();
+    return;
+  }
+
+  teddyGame.guessed.add(letter);
+
+  if (teddyGame.word.includes(letter)) {
+    addOutput(`<span class="success">✅ yes! "${letter}" is in the word!</span>`, '');
+  } else {
+    teddyGame.wrong++;
+    addOutput(`<span class="error">❌ nope! "${letter}" isn't in the word — I drew part of the teddy bear!</span>`, '');
+  }
+
+  // Check win
+  const won = teddyGame.word.split('').every(ch => teddyGame.guessed.has(ch));
+  if (won) {
+    renderTeddyState();
+    addOutput(`<span class="rainbow giant">YOU GOT IT! 🎉</span>`, 'celebration');
+    const cat = teddyCategory(teddyGame.word);
+    addOutput(`the word was: <span class="giant">${teddyGame.word}</span> ${cat.emoji}`, 'success');
+    if (animals[teddyGame.word]) {
+      addOutput(`<pre>${animals[teddyGame.word].art}</pre>`, 'art');
+      addOutput(animals[teddyGame.word].sound, 'success');
+    } else if (vehicles[teddyGame.word]) {
+      addOutput(`<pre>${vehicles[teddyGame.word].art}</pre>`, 'art');
+    }
+    addOutput('type "teddy bear" to play again!', 'info');
+    teddyGame = null;
+    scrollToBottom();
+    return;
+  }
+
+  // Check lose
+  if (teddyGame.wrong >= teddyMaxWrong) {
+    renderTeddyState();
+    addOutput('🧸 oh no, the teddy bear is complete!', 'peach');
+    const cat = teddyCategory(teddyGame.word);
+    addOutput(`the word was: <span class="rainbow giant">${teddyGame.word}</span> ${cat.emoji}`, 'info');
+    if (animals[teddyGame.word]) {
+      addOutput(`<pre>${animals[teddyGame.word].art}</pre>`, 'art');
+    }
+    addOutput('type "teddy bear" to play again!', 'info');
+    teddyGame = null;
+    scrollToBottom();
+    return;
+  }
+
+  renderTeddyState();
+}
+
 function makeCreature(letters) {
   const chars = letters.slice(0, 12).split('');
   const eyes = ['o','O','@','*','•','°'];
@@ -355,7 +476,8 @@ function isKnownWord(lower) {
   return animals[lower] || vehicles[lower] || colors[lower] ||
     ['help','joke','jokes','funny','dance','party','magic','abracadabra','alakazam','shazam','presto','wizard','spell',
      'rainbow','robot','beep','moon','sun','star','stars','clear','cls','hi','hello','hey',
-     'animals','colors','colours','vehicles','cars','trucks','letters','numbers'].includes(lower);
+     'animals','colors','colours','vehicles','cars','trucks','letters','numbers',
+     'teddy','teddy bear','hangman','quit','exit'].includes(lower);
 }
 
 function isGibberish(text) {
@@ -423,6 +545,22 @@ async function handleCommand(raw) {
   addLine('type here&gt;&nbsp;', text);
 
   if (!text) { addOutput('type something! 🎯', 'info'); scrollToBottom(); return; }
+
+  // Teddy Bear mode — intercept guesses
+  if (teddyGame) {
+    if (lower === 'quit' || lower === 'exit') {
+      addOutput('leaving teddy bear! 👋🧸', 'info');
+      teddyGame = null;
+      scrollToBottom(); return;
+    }
+    if (lower.length === 1 && /[a-z]/.test(lower)) {
+      handleTeddyGuess(lower);
+      return;
+    }
+    addOutput('🧸 type a single letter to guess, or "quit" to exit!', 'peach');
+    renderTeddyState();
+    return;
+  }
 
   if (pendingChallenge) {
     const c = pendingChallenge;
@@ -507,6 +645,7 @@ async function handleCommand(raw) {
     addOutput('🎨 colors: red, blue, green...', 'pink');
     addOutput('🔤 letters: a, b, c...', 'success');
     addOutput('🔢 numbers: 1, 2, 1000...', 'magic');
+    addOutput('🧸 teddy bear: guess-the-word game!', 'pink');
     scrollToBottom(); return;
   }
 
@@ -529,6 +668,7 @@ async function handleCommand(raw) {
   }
 
   if (lower === 'dance' || lower === 'party') { gibberishCount = 0; addOutput('🕺💃🪩🎵🎶🕺💃🪩🎵🎶', 'magic celebration'); scrollToBottom(); return; }
+  if (lower === 'teddy bear' || lower === 'teddy' || lower === 'hangman') { gibberishCount = 0; startTeddyBear(); return; }
   if (lower === 'rainbow') { gibberishCount = 0; addOutput('<span class="rainbow giant">RAINBOW!</span>', 'celebration'); addOutput('🔴🟠🟡🟢🔵🟣', 'celebration'); scrollToBottom(); return; }
   if (lower === 'robot' || lower === 'beep') { gibberishCount = 0; addOutput('🤖 BEEP BOOP!', 'teal celebration'); addOutput('<pre>  [o_o]\n  /| |\\\n   | |\n  _|_|_</pre>', 'art'); scrollToBottom(); return; }
   if (lower === 'moon') { gibberishCount = 0; addOutput('<span class="emoji-big">🌙🌜🌛🌝</span>', 'celebration'); scrollToBottom(); return; }
