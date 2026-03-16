@@ -351,6 +351,8 @@ function renderTeddyState() {
   if (wrongLetters.length > 0) {
     addOutput(`wrong: ${wrongLetters.join(' ')}`, 'error');
   }
+  const cat = teddyCategory(teddyGame.word);
+  addOutput(`hint: it's ${cat.label} with ${teddyGame.word.length} letters! ${cat.emoji}`, 'magic');
   addOutput(`${teddyMaxWrong - teddyGame.wrong} guesses left`, 'info');
   scrollToBottom();
 }
@@ -368,7 +370,9 @@ function handleTeddyGuess(letter) {
     addOutput(`<span class="success">✅ yes! "${letter}" is in the word!</span>`, '');
   } else {
     teddyGame.wrong++;
-    addOutput(`<span class="error">❌ nope! "${letter}" isn't in the word — I drew part of the teddy bear!</span>`, '');
+    const teddyParts = ['','the head of','the tummy of','an arm of','an arm of','a leg of','a leg of','the face of'];
+    const part = teddyParts[teddyGame.wrong] || 'part of';
+    addOutput(`<span class="error">❌ nope! "${letter}" isn't in the word — I drew ${part} the teddy bear!</span>`, '');
   }
 
   // Check win
@@ -477,7 +481,7 @@ function isKnownWord(lower) {
     ['help','joke','jokes','funny','dance','party','magic','abracadabra','alakazam','shazam','presto','wizard','spell',
      'rainbow','robot','beep','moon','sun','star','stars','clear','cls','hi','hello','hey',
      'animals','colors','colours','vehicles','cars','trucks','letters','numbers',
-     'teddy','teddy bear','hangman','quit','exit'].includes(lower);
+     'ted','teddy','teddy bear','hangman','quit','exit'].includes(lower);
 }
 
 function isGibberish(text) {
@@ -668,7 +672,7 @@ async function handleCommand(raw) {
   }
 
   if (lower === 'dance' || lower === 'party') { gibberishCount = 0; addOutput('🕺💃🪩🎵🎶🕺💃🪩🎵🎶', 'magic celebration'); scrollToBottom(); return; }
-  if (lower === 'teddy bear' || lower === 'teddy' || lower === 'hangman') { gibberishCount = 0; startTeddyBear(); return; }
+  if (lower === 'teddy bear' || lower === 'teddy' || lower === 'ted' || lower === 'hangman') { gibberishCount = 0; startTeddyBear(); return; }
   if (lower === 'rainbow') { gibberishCount = 0; addOutput('<span class="rainbow giant">RAINBOW!</span>', 'celebration'); addOutput('🔴🟠🟡🟢🔵🟣', 'celebration'); scrollToBottom(); return; }
   if (lower === 'robot' || lower === 'beep') { gibberishCount = 0; addOutput('🤖 BEEP BOOP!', 'teal celebration'); addOutput('<pre>  [o_o]\n  /| |\\\n   | |\n  _|_|_</pre>', 'art'); scrollToBottom(); return; }
   if (lower === 'moon') { gibberishCount = 0; addOutput('<span class="emoji-big">🌙🌜🌛🌝</span>', 'celebration'); scrollToBottom(); return; }
