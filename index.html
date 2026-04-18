@@ -289,6 +289,7 @@ const challenges = [
 
 // Teddy Bear game (kid-friendly hangman)
 let teddyGame = null;
+let wizardNameMode = null; // null | { step: 'name' } | { step: 'house', name: string }
 
 const teddyStages = [
   // 0 wrong — nothing
@@ -316,6 +317,64 @@ const teddyWordPool = [
   ...Object.keys(vehicles).filter(v => v !== 'plane'),
   ...Object.keys(colors),
 ];
+
+// Harry Potter Name Generator
+const wizardFirstNames = {
+  'a': ['Albus','Araminta','Aurelia','Alaric'],
+  'b': ['Bellatrix','Barnabus','Bathilda','Broderick'],
+  'c': ['Celestina','Cornelius','Cassandra','Cuthbert'],
+  'd': ['Draco','Dedalus','Dorcas','Demetrius'],
+  'e': ['Elphias','Emeric','Euphemia','Everard'],
+  'f': ['Filius','Fabian','Fleur','Florean'],
+  'g': ['Godric','Griselda','Gilderoy','Gellert'],
+  'h': ['Helga','Hestia','Horace','Hesper'],
+  'i': ['Ignotus','Isolt','Idris','Ignatius'],
+  'j': ['Junius','Justus','Joscelind','Jocunda'],
+  'k': ['Kingsley','Kennilworthy','Kirley','Kendra'],
+  'l': ['Luna','Lorcan','Laverna','Lysander'],
+  'm': ['Merlin','Minerva','Morgana','Marvolo'],
+  'n': ['Neville','Nimue','Norvel','Nymphadora'],
+  'o': ['Olympe','Orion','Ophelia','Oswald'],
+  'p': ['Phineas','Pomona','Perpetua','Percival'],
+  'q': ['Quentin','Quintius','Queenie','Quirinus'],
+  'r': ['Rowena','Rubeus','Regulus','Romilda'],
+  's': ['Salazar','Severus','Sybill','Septimus'],
+  't': ['Thaddeus','Tilden','Tiberius','Tessera'],
+  'u': ['Ulric','Ursula','Uric','Ulfius'],
+  'v': ['Vindictus','Violetta','Victoire','Veritas'],
+  'w': ['Wilfred','Wisteria','Wendelin','Warlock'],
+  'x': ['Xenophilius','Xandra','Xeno','Xerxes'],
+  'y': ['Yardley','Yvette','Ysolda','Yorick'],
+  'z': ['Zenith','Zephyr','Zelda','Zygmunt'],
+};
+const wizardLastPart1 = ['Bumble','Weasel','Thistl','Brambl','Wobble','Fizzle','Mugwort','Nimble','Tumble','Riddle','Boggle','Spindle','Twinkle','Rumble','Crumple','Flicker','Nettle','Pickle','Kettle','Dimble','Plumble','Pebble','Dingle','Fumble'];
+const wizardLastPart2 = ['bottom','wort','wick','thorpe','more','bridge','stone','wood','thorn','worth','horn','shade','spark','brew','snout','wand','dust','bloom','mantle','bore'];
+const wizardHouses = [
+  { name: 'GRYFFINDOR', emoji: '🦁', color: 'var(--red)', trait: 'brave and bold' },
+  { name: 'HUFFLEPUFF', emoji: '🦡', color: 'var(--yellow)', trait: 'loyal and kind' },
+  { name: 'RAVENCLAW', emoji: '🦅', color: 'var(--blue)', trait: 'wise and clever' },
+  { name: 'SLYTHERIN', emoji: '🐍', color: 'var(--green)', trait: 'cunning and ambitious' },
+];
+const wandCores = ['Phoenix Feather','Dragon Heartstring','Unicorn Hair','Thestral Tail','Thunderbird Feather','Veela Hair'];
+const wandWoods = ['Holly','Elder','Oak','Willow','Vine','Hawthorn','Cherry','Elm','Maple','Yew','Ash','Birch'];
+
+function wizardHash(str) {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) h = ((h << 5) - h + str.charCodeAt(i)) | 0;
+  return Math.abs(h);
+}
+
+function generateWizardName(name, house) {
+  const letters = name.toLowerCase().replace(/[^a-z]/g, '');
+  if (!letters) return { first: 'Albus', last: 'Fumblemore', house, wand: '11" Phoenix Feather & Holly' };
+  const h = wizardHash(letters);
+  const firstNames = wizardFirstNames[letters[0]] || wizardFirstNames['a'];
+  const firstName = firstNames[h % firstNames.length];
+  const lastName = wizardLastPart1[(h >> 3) % wizardLastPart1.length] + wizardLastPart2[(h >> 6) % wizardLastPart2.length];
+  const wandLength = (9 + (h % 6)) + ['','¼','½','¾'][h % 4] + '"';
+  const wand = wandLength + ' ' + wandCores[(h >> 4) % wandCores.length] + ' & ' + wandWoods[(h >> 7) % wandWoods.length];
+  return { first: firstName, last: lastName, house, wand };
+}
 
 function teddyCategory(word) {
   if (animals[word]) return { label: 'an animal', emoji: animals[word].emoji };
@@ -481,7 +540,7 @@ function isKnownWord(lower) {
     ['help','joke','jokes','funny','dance','party','magic','abracadabra','alakazam','shazam','presto','wizard','spell',
      'rainbow','robot','beep','moon','sun','star','stars','clear','cls','hi','hello','hey',
      'animals','colors','colours','vehicles','cars','trucks','letters','numbers',
-     'ted','teddy','teddy bear','hangman','quit','exit'].includes(lower);
+     'ted','teddy','teddy bear','hangman','potter','harry potter','quit','exit'].includes(lower);
 }
 
 function isGibberish(text) {
@@ -564,6 +623,49 @@ async function handleCommand(raw) {
     addOutput('🧸 type a single letter to guess, or "quit" to exit!', 'peach');
     renderTeddyState();
     return;
+  }
+
+  // Wizard Name mode — two-step: name, then house
+  if (wizardNameMode) {
+    if (lower === 'quit' || lower === 'exit') {
+      addOutput('leaving wizard mode! 👋⚡', 'info');
+      wizardNameMode = null;
+      scrollToBottom(); return;
+    }
+    if (wizardNameMode.step === 'name') {
+      wizardNameMode = { step: 'house', name: text };
+      addOutput(`<span class="giant">⚡ ${text} ⚡</span>`, 'magic');
+      addOutput('choose your house:', 'magic');
+      addOutput('  <span style="color:var(--red)">1</span>  🦁 Gryffindor — brave and bold', 'info');
+      addOutput('  <span style="color:var(--yellow)">2</span>  🦡 Hufflepuff — loyal and kind', 'info');
+      addOutput('  <span style="color:var(--blue)">3</span>  🦅 Ravenclaw — wise and clever', 'info');
+      addOutput('  <span style="color:var(--green)">4</span>  🐍 Slytherin — cunning and ambitious', 'info');
+      scrollToBottom();
+      return;
+    }
+    if (wizardNameMode.step === 'house') {
+      const houseMap = { '1': 0, '2': 1, '3': 2, '4': 3, 'gryffindor': 0, 'hufflepuff': 1, 'ravenclaw': 2, 'slytherin': 3 };
+      const houseIdx = houseMap[lower];
+      if (houseIdx === undefined) {
+        addOutput('type 1, 2, 3, or 4 to pick your house!', 'peach');
+        scrollToBottom(); return;
+      }
+      const house = wizardHouses[houseIdx];
+      const storedName = wizardNameMode.name;
+      wizardNameMode = null;
+      gibberishCount = 0;
+      const result = generateWizardName(storedName, house);
+      addOutput('✨🔮 the sorting hat speaks... 🔮✨', 'magic');
+      addOutput(`<pre class="creature-art">     ____\n    /    \\\n   | ~~   |\n    \\____/\n     )()(\n    {    }</pre>`, '');
+      addOutput('your wizard name is...', 'magic');
+      addOutput(`<span class="rainbow giant">⚡ ${result.first} ${result.last} ⚡</span>`, 'celebration');
+      addOutput(`${result.house.emoji} <span style="color:${result.house.color}" class="giant">${result.house.name}!</span> ${result.house.emoji}`, 'celebration');
+      addOutput(`you are ${result.house.trait}!`, 'magic');
+      addOutput(`⚡ wand: ${result.wand}`, 'info');
+      addOutput('type "potter" to try another name!', 'info');
+      scrollToBottom();
+      return;
+    }
   }
 
   if (pendingChallenge) {
@@ -650,6 +752,7 @@ async function handleCommand(raw) {
     addOutput('🔤 letters: a, b, c...', 'success');
     addOutput('🔢 numbers: 1, 2, 1000...', 'magic');
     addOutput('🧸 teddy bear: guess-the-word game!', 'pink');
+    addOutput('⚡ potter: get your wizard name!', 'magic');
     scrollToBottom(); return;
   }
 
@@ -685,6 +788,16 @@ async function handleCommand(raw) {
   if (lower === 'letters') { gibberishCount = 0; addOutput('<span class="rainbow giant">A B C D E F G H I J K L M N O P Q R S T U V W X Y Z</span>', 'celebration'); scrollToBottom(); return; }
   if (lower === 'numbers') { gibberishCount = 0; addOutput('0️⃣1️⃣2️⃣3️⃣4️⃣5️⃣6️⃣7️⃣8️⃣9️⃣🔟', 'celebration'); scrollToBottom(); return; }
   if (lower === 'clear' || lower === 'cls') { terminal.innerHTML = ''; addOutput('✨', 'success'); scrollToBottom(); return; }
+
+  if (lower === 'potter' || lower === 'harry potter') {
+    gibberishCount = 0;
+    wizardNameMode = { step: 'name' };
+    addOutput('<span class="rainbow giant">⚡ HARRY POTTER ⚡</span>', 'celebration');
+    addOutput(`<pre class="creature-art">     ____\n    /    \\\n   | ~~   |\n    \\____/\n     )()(\n    {    }</pre>`, '');
+    addOutput('✨ what is your name, young wizard? ✨', 'magic');
+    scrollToBottom();
+    return;
+  }
 
   if (lower.startsWith('i am ') || lower.startsWith('my name is ')) {
     gibberishCount = 0;
