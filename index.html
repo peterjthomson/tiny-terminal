@@ -401,8 +401,9 @@ function teddyCategory(word) {
   return { label: 'a word', emoji: '✨' };
 }
 
-function startTeddyBear() {
-  const word = teddyWordPool[Math.floor(Math.random() * teddyWordPool.length)];
+function startTeddyBear(pool) {
+  const wordList = pool || teddyWordPool;
+  const word = wordList[Math.floor(Math.random() * wordList.length)];
   teddyGame = { word, guessed: new Set(), wrong: 0 };
   const cat = teddyCategory(word);
   addOutput('<span class="rainbow giant">TEDDY BEAR!</span> 🧸', 'celebration');
@@ -558,7 +559,7 @@ function isKnownWord(lower) {
     ['help','joke','jokes','funny','dance','party','magic','abracadabra','alakazam','shazam','presto','wizard','spell',
      'rainbow','robot','beep','moon','sun','star','stars','clear','cls','hi','hello','hey',
      'animals','colors','colours','vehicles','cars','trucks','letters','numbers',
-     'ted','teddy','teddy bear','hangman','potter','harry potter','quit','exit'].includes(lower);
+     'ted','teddy','teddy bear','hangman','dunny','potter','harry potter','quit','exit'].includes(lower);
 }
 
 function isGibberish(text) {
@@ -794,6 +795,7 @@ async function handleCommand(raw) {
 
   if (lower === 'dance' || lower === 'party') { gibberishCount = 0; addOutput('🕺💃🪩🎵🎶🕺💃🪩🎵🎶', 'magic celebration'); scrollToBottom(); return; }
   if (lower === 'teddy bear' || lower === 'teddy' || lower === 'ted' || lower === 'hangman') { gibberishCount = 0; startTeddyBear(); return; }
+  if (lower === 'dunny') { gibberishCount = 0; startTeddyBear(Object.keys(seaCreatures)); return; }
   if (lower === 'rainbow') { gibberishCount = 0; addOutput('<span class="rainbow giant">RAINBOW!</span>', 'celebration'); addOutput('🔴🟠🟡🟢🔵🟣', 'celebration'); scrollToBottom(); return; }
   if (lower === 'robot' || lower === 'beep') { gibberishCount = 0; addOutput('🤖 BEEP BOOP!', 'teal celebration'); addOutput('<pre>  [o_o]\n  /| |\\\n   | |\n  _|_|_</pre>', 'art'); scrollToBottom(); return; }
   if (lower === 'moon') { gibberishCount = 0; addOutput('<span class="emoji-big">🌙🌜🌛🌝</span>', 'celebration'); scrollToBottom(); return; }
