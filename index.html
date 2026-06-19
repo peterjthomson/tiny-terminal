@@ -254,6 +254,22 @@ const colors = {
   'brown':  { emoji: '🟤', things: '🐻 🍫 🌰 🐿️ 🏈' },
 };
 
+const seaCreatures = {
+  'octopus':   { emoji: '🐙', fact: 'Octopuses have three hearts!' },
+  'dolphin':   { emoji: '🐬', fact: 'Dolphins call each other by name!' },
+  'whale':     { emoji: '🐋', fact: 'A blue whale is bigger than a bus!' },
+  'crab':      { emoji: '🦀', fact: 'Crabs walk sideways!' },
+  'seahorse':  { emoji: '🐴', fact: 'Daddy seahorses carry the babies!' },
+  'jellyfish': { emoji: '🪼', fact: 'Jellyfish have no brain and no bones!' },
+  'starfish':  { emoji: '⭐', fact: 'Starfish can grow back a lost arm!' },
+  'seal':      { emoji: '🦭', fact: 'Seals can nap underwater!' },
+  'otter':     { emoji: '🦦', fact: 'Otters hold hands while they sleep!' },
+  'squid':     { emoji: '🦑', fact: 'Squid can squirt ink to hide!' },
+  'eel':       { emoji: '🐍', fact: 'Some eels make their own electricity!' },
+  'stingray':  { emoji: '🐟', fact: 'Stingrays are flat and flappy!' },
+  'clam':      { emoji: '🦪', fact: 'Some clams can live over 100 years!' },
+};
+
 const letterAnimals = {
   'a':'🐊','b':'🦋','c':'🐱','d':'🐶','e':'🐘','f':'🐸','g':'🦒','h':'🐴',
   'i':'🦎','j':'🪼','k':'🦘','l':'🦁','m':'🐵','n':'🦑','o':'🦉','p':'🐧',
@@ -316,6 +332,7 @@ const teddyWordPool = [
   ...Object.keys(animals),
   ...Object.keys(vehicles).filter(v => v !== 'plane'),
   ...Object.keys(colors),
+  ...Object.keys(seaCreatures),
 ];
 
 // Harry Potter Name Generator
@@ -378,6 +395,7 @@ function generateWizardName(name, house) {
 
 function teddyCategory(word) {
   if (animals[word]) return { label: 'an animal', emoji: animals[word].emoji };
+  if (seaCreatures[word]) return { label: 'a sea creature', emoji: seaCreatures[word].emoji };
   if (vehicles[word]) return { label: 'a vehicle', emoji: vehicles[word].emoji };
   if (colors[word]) return { label: 'a color', emoji: colors[word].emoji };
   return { label: 'a word', emoji: '✨' };
